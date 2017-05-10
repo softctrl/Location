@@ -10,18 +10,13 @@ import Foundation
 import UIKit
 
 class LocationShareModel : NSObject {
-    var timer : NSTimer?
+    var timer : Timer?
     var bgTask : BackgroundTaskManager?
     var myLocationArray : NSMutableArray?
     
-    func sharedModel()-> AnyObject {
-        struct Static {
-            static var sharedMyModel : AnyObject?
-            static var onceToken : dispatch_once_t = 0
-        }
-        dispatch_once(&Static.onceToken) {
-            Static.sharedMyModel = LocationShareModel()
-        }
-        return Static.sharedMyModel!
+    static let SHARED_MODEL = LocationShareModel()
+    
+    func sharedModel()-> LocationShareModel {
+        return LocationShareModel.SHARED_MODEL
     }
 }
