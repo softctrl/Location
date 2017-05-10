@@ -15,85 +15,78 @@ class BackgroundTaskManager : NSObject {
     var bgTaskIdList : NSMutableArray?
     var masterTaskId : UIBackgroundTaskIdentifier?
     
-    init() {
+    override init() {
+
         super.init()
-        if self != nil {
-            self.bgTaskIdList = NSMutableArray()
-            self.masterTaskId = UIBackgroundTaskInvalid
-        }
+        self.bgTaskIdList = NSMutableArray()
+        self.masterTaskId = UIBackgroundTaskInvalid
+
     }
     
+    static var SHARED_BG_MANAGER : BackgroundTaskManager? = BackgroundTaskManager()
+    
     class func sharedBackgroundTaskManager() -> BackgroundTaskManager? {
-        struct Static {
-            static var sharedBGTaskManager : BackgroundTaskManager?
-            static var onceToken : dispatch_once_t = 0
-        }
-        dispatch_once(&Static.onceToken) {
-            Static.sharedBGTaskManager = BackgroundTaskManager()
-        }
-        return Static.sharedBGTaskManager
+        return BackgroundTaskManager.SHARED_BG_MANAGER
     }
     
     func beginNewBackgroundTask() -> UIBackgroundTaskIdentifier? {
-        var application : UIApplication = UIApplication.sharedApplication()
+        let application : UIApplication = UIApplication.shared
         
         var bgTaskId : UIBackgroundTaskIdentifier = UIBackgroundTaskInvalid
         
-        if application.respondsToSelector("beginBackgroundTaskWithExpirationHandler") {
+        if application.responds(to: Selector(("beginBackgroundTask"))) {
             print("RESPONDS TO SELECTOR")
-            bgTaskId = application.beginBackgroundTaskWithExpirationHandler({
+            bgTaskId = application.beginBackgroundTask(expirationHandler: {
                 print("background task \(bgTaskId as Int) expired\n")
             })
         }
         
         if self.masterTaskId == UIBackgroundTaskInvalid {
             self.masterTaskId = bgTaskId
-            print("started master task \(self.masterTaskId)\n")
+            print("started master task \((self.masterTaskId)!)\n")
         } else {
             // add this ID to our list
             print("started background task \(bgTaskId as Int)\n")
-            self.bgTaskIdList!.addObject(bgTaskId)
+            self.bgTaskIdList!.add(bgTaskId)
             //self.endBackgr
         }
         return bgTaskId
     }
     
     func endBackgroundTask(){
-        self.drainBGTaskList(false)
+        self.drainBGTaskList(all: false)
     }
     
     func endAllBackgroundTasks() {
-        self.drainBGTaskList(true)
+        self.drainBGTaskList(all: true)
     }
     
     func drainBGTaskList(all:Bool) {
         //mark end of each of our background task
-        var application: UIApplication = UIApplication.sharedApplication()
-        
-        
-        let endBackgroundTask : Selector = "endBackgroundTask"
-        
-        if application.respondsToSelector(endBackgroundTask) {
-            var count: Int = self.bgTaskIdList!.count
-            for (var i = (all==true ? 0:1); i<count; i++) {
-                var bgTaskId : UIBackgroundTaskIdentifier = self.bgTaskIdList!.objectAtIndex(0) as Int
+        let application: UIApplication = UIApplication.shared
+
+        let endBackgroundTask : Selector = #selector(BackgroundTaskManager.endBackgroundTask)
+
+        if application.responds(to: endBackgroundTask) {
+            let count: Int = self.bgTaskIdList!.count-1
+            let i = (all==true ? 0:1)
+            for _ in i...count {
+                let bgTaskId : UIBackgroundTaskIdentifier = self.bgTaskIdList!.object(at: 0) as! Int
                 print("ending background task with id \(bgTaskId as Int)\n")
                 application.endBackgroundTask(bgTaskId)
-                self.bgTaskIdList!.removeObjectAtIndex(0)
+                self.bgTaskIdList!.removeObject(at: 0)
             }
             if self.bgTaskIdList!.count > 0 {
-                print("kept background task id \(self.bgTaskIdList!.objectAtIndex(0))\n")
+                print("kept background task id \(self.bgTaskIdList!.object(at: 0))\n")
             }
             if all == true {
                 print("no more background tasks running\n")
                 application.endBackgroundTask(self.masterTaskId!)
                 self.masterTaskId = UIBackgroundTaskInvalid
             } else {
-                print("kept master background task id \(self.masterTaskId)\n")
+                print("kept master background task id \((self.masterTaskId)!)\n")
             }
         }
     }
-
+    
 }
-
-
